@@ -1,0 +1,26 @@
+/* Hit areas positioned over decks.png in image percentages; caps are sprites cut from the art. */
+.track {
+  position: absolute;
+  touch-action: none;
+  outline: none;
+}
+
+.vertical {
+  cursor: ns-resize;
+}
+
+.horizontal {
+  cursor: ew-resize;
+}
+
+.cap {
+  position: absolute;
+  max-width: none;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+.track:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 1px;
+}

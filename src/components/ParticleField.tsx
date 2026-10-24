@@ -1,29 +1,93 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 import * as THREE from "three";
 import { fragmentShader, vertexShader } from "./particleFieldShaders";
 import styles from "./ParticleField.module.css";
 
+/**
+ * Live style controls, each 0..1 with 0.5 as the default look. Read every
+ * frame, so writing to the object takes effect without re-rendering.
+ */
+export type FieldControls = {
+  flow: number; // fluid speed: 1/4x .. 4x
+  warp: number; // how much the fluid folds: flat .. 2x
+  bass: number; // kick push on particles and cones: none .. 2x
+  grain: number; // dot size and dither chunkiness: fine .. chunky
+};
+
+const DEFAULT_CONTROLS: FieldControls = { flow: 0.5, warp: 0.5, bass: 0.5, grain: 0.5 };
+
+/** Shapes for the field to draw with its own particles (see GlyphScatter). */
+export type GlyphMask = {
+  canvas: HTMLCanvasElement | null; // white shapes on black, covering the field
+  version: number; // bumped whenever the canvas changes
+  strength: number; // 0..1
+  /** Screen points (client px) to disrupt the field at; the field drains this each frame. */
+  bursts: { x: number; y: number }[];
+};
+
 type Props = {
+  controls?: RefObject<FieldControls>;
+  glyphMask?: RefObject<GlyphMask>;
   color?: string;
   accent?: string;
   background?: string;
   className?: string;
+  /** Elements whose centres the kick rings radiate from (e.g. speaker cones). */
+  sourceRefs?: RefObject<(HTMLElement | null)[]>;
+  /** Kick strength per source, matching sourceRefs. Defaults to one source at the centre. */
+  sourceStrengths?: readonly number[];
+  /** Called every frame with the kick envelope (1 on the hit, decaying to 0) and the beat number. */
+  onBeat?: (envelope: number, beat: number) => void;
 };
 
 const CAMERA_Z = 5;
 const TILT = -0.35;
-const MAX_POINTS = 140_000;
-const MIN_POINTS = 20_000;
+const MAX_POINTS = 65_000; // enough particles to draw readable glyphs
+const MIN_POINTS = 8_000;
+const TRAIL = 24; // pointer wake samples
+const TRAIL_SPACING = 0.08; // plane units between samples
+const TRAIL_DECAY = 0.08; // fraction of life left after one second
+const BPM = 132; // UK garage tempo, four on the floor
+const BEAT_INTERVAL = 60 / BPM;
+const KICKS = 2; // the current kick plus the tail of the last one, for far particles
+const KICK_DECAY = 12; // envelope falloff per second; shared by cones and particles
+const SOUND_SPEED = 6; // plane units per second the push travels out from a driver
+const DEFAULT_STRENGTHS = [1];
+// How far the field reaches from the speaker. At 1280x900, 0.05 keeps particles
+// within ~100px; 0.3 fills most of the screen but fades out toward the edges.
+const FOCUS_RADIUS = 0.3;
+// Visibility far from the speaker. Keep it near 0: dither still lights a
+// particle's centre pixel at a few percent, which reads as dust everywhere.
+const FOCUS_FLOOR = 0;
+const FOCUS_BOOST = 1.3; // extra density right around the speaker
+const BURSTS = 8; // disruptions alive at once
+const BURST_LIFE = 1.4; // seconds a disruption lasts
+const GLYPH_FLOW = 0.2; // share of the field's flow the glyphs' particles follow
+const CLUMPS = 0.7; // density added in drifting random regions, anywhere on screen
+
+function isLightBackground(hex: string) {
+  return new THREE.Color(hex).getHSL({ h: 0, s: 0, l: 0 }).l > 0.5;
+}
 
 export default function ParticleField({
-  color = "#ffffff",
-  accent = "#7fd4ff",
-  background = "#000000",
+  color = "#111111",
+  accent = "#2b4fc2",
+  background = "#ffffff",
   className,
+  sourceRefs,
+  sourceStrengths = DEFAULT_STRENGTHS,
+  onBeat,
+  controls,
+  glyphMask,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // Kept in a ref so a new callback each render doesn't restart the scene.
+  const onBeatRef = useRef(onBeat);
+  useEffect(() => {
+    onBeatRef.current = onBeat;
+  }, [onBeat]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -47,7 +111,7 @@ export default function ParticleField({
     // Grid of points in [-0.5, 0.5]², jittered to avoid moiré. Scaled to the
     // viewport in the shader via uPlane, so resize doesn't rebuild geometry.
     const { width, height } = container.getBoundingClientRect();
-    const count = THREE.MathUtils.clamp((width * height) / 9, MIN_POINTS, MAX_POINTS);
+    const count = THREE.MathUtils.clamp((width * height) / 20, MIN_POINTS, MAX_POINTS);
     const aspect = width / Math.max(height, 1);
     const cols = Math.round(Math.sqrt(count * aspect));
     const rows = Math.round(count / cols);
@@ -65,14 +129,37 @@ export default function ParticleField({
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute("aRandom", new THREE.BufferAttribute(randoms, 1));
 
+    // Black 1x1 until a glyph mask arrives.
+    const emptyMask = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+    emptyMask.needsUpdate = true;
+    let maskTexture: THREE.CanvasTexture | null = null;
+    let maskVersion = -1;
+    let burstHead = 0;
+
     const uniforms = {
       uTime: { value: 0 },
       uPlane: { value: new THREE.Vector2(1, 1) },
-      uMouse: { value: new THREE.Vector2(999, 999) },
-      uMouseForce: { value: 0 },
-      uMouseRadius: { value: 0.9 },
-      uPointSize: { value: 9 },
+      uTrail: { value: Array.from({ length: TRAIL }, () => new THREE.Vector4(999, 999, 0, 0)) },
+      uTrailLife: { value: new Array<number>(TRAIL).fill(0) },
+      // Disruptions: xy = plane-local centre, z = start time (uClock), w = 1 when set.
+      uBursts: { value: Array.from({ length: BURSTS }, () => new THREE.Vector4(0, 0, -99, 0)) },
+      uClock: { value: 0 },
+      uTrailRadius: { value: 0.45 },
+      uSources: { value: sourceStrengths.map((s) => new THREE.Vector3(0, 0, s)) },
+      uBeatAge: { value: 0 },
+      uBeatInterval: { value: BEAT_INTERVAL },
+      uFocus: { value: new THREE.Vector2() },
+      uFocusRadius: { value: FOCUS_RADIUS },
+      uFocusFloor: { value: FOCUS_FLOOR },
+      uFocusBoost: { value: FOCUS_BOOST },
+      uClumps: { value: CLUMPS },
+      uGlyphMask: { value: emptyMask as THREE.Texture },
+      uGlyphStrength: { value: 0 },
+      uWarp: { value: 1 },
+      uBass: { value: 1 },
+      uPointSize: { value: 11 },
       uPixelRatio: { value: pixelRatio },
+      uDitherScale: { value: pixelRatio },
       uColor: { value: new THREE.Color(color) },
       uAccent: { value: new THREE.Color(accent) },
     };
@@ -80,9 +167,19 @@ export default function ParticleField({
       uniforms,
       vertexShader,
       fragmentShader,
-      transparent: true,
+      defines: {
+        TRAIL,
+        BURSTS,
+        BURST_LIFE: BURST_LIFE.toFixed(2),
+        KICKS,
+        SOURCES: sourceStrengths.length,
+        KICK_DECAY: KICK_DECAY.toFixed(1),
+        GLYPH_FLOW: GLYPH_FLOW.toFixed(2),
+        SOUND_SPEED: SOUND_SPEED.toFixed(1),
+      },
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      // Additive glow only reads on dark backgrounds; light ones need normal blending.
+      blending: isLightBackground(background) ? THREE.NormalBlending : THREE.AdditiveBlending,
     });
 
     const points = new THREE.Points(geometry, material);
@@ -105,15 +202,12 @@ export default function ParticleField({
 
     // Pointer state, in NDC relative to the canvas.
     const pointer = new THREE.Vector2();
-    const lastPointer = new THREE.Vector2();
     let pointerActive = false;
-    let energy = 0;
 
     const onPointerMove = (e: PointerEvent) => {
       const rect = container.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-      if (!pointerActive) lastPointer.set(x, y);
       pointer.set(x, y);
       pointerActive = x >= -1 && x <= 1 && y >= -1 && y <= 1;
     };
@@ -127,42 +221,137 @@ export default function ParticleField({
     const raycaster = new THREE.Raycaster();
     const plane = new THREE.Plane();
     const hit = new THREE.Vector3();
-    const smoothMouse = new THREE.Vector3(999, 999, 0);
     const normal = new THREE.Vector3();
+    const lastHit = new THREE.Vector2();
+    const lastSample = new THREE.Vector2();
+    const velocity = new THREE.Vector2();
+    const frameVelocity = new THREE.Vector2();
+    let hasLastHit = false;
+    let trailHead = 0;
+
+    // Project a canvas NDC point onto the tilted plane, in its local space.
+    points.updateMatrixWorld();
+    normal.set(0, 0, 1).transformDirection(points.matrixWorld);
+    plane.setFromNormalAndCoplanarPoint(normal, points.position);
+    const toPlane = (ndc: THREE.Vector2) => {
+      raycaster.setFromCamera(ndc, camera);
+      if (!raycaster.ray.intersectPlane(plane, hit)) return null;
+      return points.worldToLocal(hit);
+    };
+
+    // Track the source elements every frame so the rings follow layout changes.
+    const sourceNdc = new THREE.Vector2();
+    const updateSources = () => {
+      const els = sourceRefs?.current;
+      if (!els) return;
+      const box = container.getBoundingClientRect();
+      els.forEach((el, i) => {
+        const target = uniforms.uSources.value[i];
+        if (!el || !target) return;
+        const src = el.getBoundingClientRect();
+        sourceNdc.set(
+          ((src.left + src.width / 2 - box.left) / box.width) * 2 - 1,
+          -((src.top + src.height / 2 - box.top) / box.height) * 2 + 1,
+        );
+        const local = toPlane(sourceNdc);
+        if (local) target.setX(local.x).setY(local.y);
+      });
+      // The densest part of the field sits on the strength-weighted centre of the sources.
+      let weight = 0;
+      uniforms.uFocus.value.set(0, 0);
+      for (const s of uniforms.uSources.value) {
+        uniforms.uFocus.value.x += s.x * s.z;
+        uniforms.uFocus.value.y += s.y * s.z;
+        weight += s.z;
+      }
+      if (weight > 0) uniforms.uFocus.value.divideScalar(weight);
+    };
 
     const timer = new THREE.Timer();
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    let fieldTime = 0;
+
     const frame = (timestamp?: number) => {
       timer.update(timestamp);
       const dt = Math.min(timer.getDelta(), 0.1);
-      uniforms.uTime.value = timer.getElapsed();
+      const elapsed = timer.getElapsed();
 
-      // Gentle camera parallax toward the pointer.
-      const target = pointerActive ? pointer : new THREE.Vector2();
-      camera.position.x += (target.x * 0.4 - camera.position.x) * 0.04;
-      camera.position.y += (target.y * 0.25 - camera.position.y) * 0.04;
-      camera.lookAt(0, 0, 0);
+      // Style controls (the deck faders). Flow advances the field's own clock,
+      // so changing speed never jumps the animation.
+      const c = controls?.current ?? DEFAULT_CONTROLS;
+      fieldTime += dt * 4 ** (c.flow * 2 - 1);
+      uniforms.uTime.value = fieldTime;
+      uniforms.uClock.value = elapsed;
 
-      // Energy rises with pointer speed and decays, so moving stirs the field.
-      const speed = pointer.distanceTo(lastPointer) / Math.max(dt, 1e-3);
-      lastPointer.copy(pointer);
-      energy = Math.min(energy + speed * dt * 0.6, 1.6) * Math.pow(0.15, dt);
-      const targetForce = pointerActive ? 0.35 + energy : 0;
-      uniforms.uMouseForce.value += (targetForce - uniforms.uMouseForce.value) * 0.08;
+      // Disruptions queued by GlyphScatter (sprites appearing and vanishing).
+      const queued = glyphMask?.current?.bursts;
+      while (queued?.length) {
+        const b = queued.shift()!;
+        const rect = container.getBoundingClientRect();
+        const at = toPlane(
+          new THREE.Vector2(((b.x - rect.left) / rect.width) * 2 - 1, -((b.y - rect.top) / rect.height) * 2 + 1),
+        );
+        if (!at) continue;
+        uniforms.uBursts.value[burstHead].set(at.x, at.y, elapsed, 1);
+        burstHead = (burstHead + 1) % BURSTS;
+      }
 
-      // Project the pointer onto the tilted plane, in its local space.
-      if (pointerActive) {
-        points.updateMatrixWorld();
-        normal.set(0, 0, 1).transformDirection(points.matrixWorld);
-        plane.setFromNormalAndCoplanarPoint(normal, points.position);
-        raycaster.setFromCamera(pointer, camera);
-        if (raycaster.ray.intersectPlane(plane, hit)) {
-          points.worldToLocal(hit);
-          if (smoothMouse.x > 100) smoothMouse.copy(hit);
-          smoothMouse.lerp(hit, 0.15);
-          uniforms.uMouse.value.set(smoothMouse.x, smoothMouse.y);
+      // Glyph mask: (re)wrap the canvas as a texture and upload changes.
+      const mask = glyphMask?.current;
+      if (mask?.canvas) {
+        if (maskTexture?.image !== mask.canvas) {
+          maskTexture?.dispose();
+          maskTexture = new THREE.CanvasTexture(mask.canvas);
+          maskTexture.minFilter = THREE.LinearFilter;
+          maskTexture.generateMipmaps = false;
+          uniforms.uGlyphMask.value = maskTexture;
+          maskVersion = -1;
         }
+        if (mask.version !== maskVersion) {
+          maskTexture.needsUpdate = true;
+          maskVersion = mask.version;
+        }
+      }
+      uniforms.uGlyphStrength.value = mask?.canvas ? mask.strength : 0;
+      uniforms.uWarp.value = c.warp * 2;
+      const bass = c.bass * 2;
+      uniforms.uBass.value = bass;
+      uniforms.uPointSize.value = 11 * 2 ** (c.grain * 2 - 1);
+      uniforms.uDitherScale.value = pixelRatio * (c.grain < 0.6 ? 1 : c.grain < 0.85 ? 2 : 3);
+
+      // Fake audio: a kick on every beat (on the real clock, so tempo is fixed).
+      const beatAge = elapsed % BEAT_INTERVAL;
+      uniforms.uBeatAge.value = beatAge;
+      onBeatRef.current?.(Math.exp(-beatAge * KICK_DECAY) * bass, Math.floor(elapsed / BEAT_INTERVAL));
+      updateSources();
+
+      // Fade the wake.
+      const life = uniforms.uTrailLife.value;
+      const fade = Math.pow(TRAIL_DECAY, dt);
+      for (let i = 0; i < TRAIL; i++) life[i] *= fade;
+
+      // Drop wake samples along the pointer's path, carrying its velocity.
+      const local = pointerActive ? toPlane(pointer) : null;
+      if (local && dt > 0) {
+        if (!hasLastHit) {
+          lastHit.set(local.x, local.y);
+          lastSample.copy(lastHit);
+          velocity.set(0, 0);
+          hasLastHit = true;
+        }
+        frameVelocity.set(local.x - lastHit.x, local.y - lastHit.y).divideScalar(dt);
+        velocity.lerp(frameVelocity, 0.3).clampLength(0, 6);
+        lastHit.set(local.x, local.y);
+
+        if (lastHit.distanceTo(lastSample) > TRAIL_SPACING) {
+          uniforms.uTrail.value[trailHead].set(local.x, local.y, velocity.x, velocity.y);
+          life[trailHead] = 1;
+          trailHead = (trailHead + 1) % TRAIL;
+          lastSample.copy(lastHit);
+        }
+      } else {
+        hasLastHit = false;
       }
 
       renderer.render(scene, camera);
@@ -191,17 +380,12 @@ export default function ParticleField({
       timer.dispose();
       geometry.dispose();
       material.dispose();
+      emptyMask.dispose();
+      maskTexture?.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [color, accent, background]);
+  }, [color, accent, background, sourceRefs, sourceStrengths, controls, glyphMask]);
 
-  return (
-    <div
-      ref={containerRef}
-      className={[styles.field, className].filter(Boolean).join(" ")}
-      style={{ background }}
-      aria-hidden="true"
-    />
-  );
+  return <div ref={containerRef} className={[styles.field, className].filter(Boolean).join(" ")} aria-hidden="true" />;
 }

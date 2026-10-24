@@ -1,24 +1,24 @@
 import type { Metadata } from "next";
-import SiteHeader from "@/components/SiteHeader";
-import SiteFooter from "@/components/SiteFooter";
+import MenuBar from "@/components/MenuBar";
+import { display } from "@/lib/fonts";
 import { site } from "@/lib/site";
+import { themeInitScript } from "@/lib/themeScript";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: {
-    default: site.name,
-    template: `%s | ${site.name}`,
-  },
-  description: site.description,
+  title: { default: site.name, template: `%s | ${site.name}` },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en">
+    // data-theme may be set by the init script before React hydrates.
+    <html lang="en" className={display.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body>
-        <SiteHeader />
+        <MenuBar />
         <main>{children}</main>
-        <SiteFooter />
       </body>
     </html>
   );

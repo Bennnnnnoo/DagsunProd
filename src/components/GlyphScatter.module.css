@@ -1,0 +1,25 @@
+.glyphs {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  /* Home screen only: fades out as the decks grow or the stage zooms (vars set by Hero). */
+  opacity: calc((1 - var(--grow, 0)) * (1 - min(1, var(--zoom, 0) * 4)));
+}
+
+/* Blue panels behind the glyphs and figures, with the field's particles shown
+   white inside them. Two layers over the field: white with "difference" inverts
+   it (white ground -> black, black particles -> white), then blue with
+   "screen" turns the black ground blue and leaves white particles white. On the
+   dark theme the particles are already white, so only the blue layer is used. */
+.panelInvert {
+  mix-blend-mode: difference;
+}
+
+.panels {
+  mix-blend-mode: screen;
+}
+
+:global(:root[data-theme="dark"]) .panelInvert {
+  display: none;
+}

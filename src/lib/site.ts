@@ -1,12 +1,16 @@
+import type { SpriteName } from "@/assets/sprites";
+
 export const site = {
   name: "Dagsun Sounds",
-  description: "Independent record label.",
-  email: "hello@example.com",
+  contact: {
+    email: "dagsunsounds@gmail.com",
+    instagram: "dagsunsounds",
+  },
   nav: [
-    { href: "/releases", label: "Releases" },
-    { href: "/artists", label: "Artists" },
-    { href: "/news", label: "News" },
-    { href: "/about", label: "About" },
-    { href: "/contact", label: "Contact" },
-  ],
+    { href: "/", label: "Home", icon: "shield" },
+    { href: "/events", label: "Events", icon: "stopwatch" },
+    { href: "/merch", label: "Merch", icon: "cart" },
+    { href: "/tracks", label: "Tracks", icon: "circleR" },
+    { href: "/contact", label: "Contact", icon: "figure" },
+  ] satisfies { href: string; label: string; icon: SpriteName }[],
 };

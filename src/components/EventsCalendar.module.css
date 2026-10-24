@@ -1,0 +1,162 @@
+/* A wall-calendar page in the site's black-and-white, wordmark style. */
+.page {
+  position: relative;
+  width: min(100%, 880px);
+  margin: 0 auto;
+  padding: 40px clamp(16px, 4vw, 40px) 32px;
+  border: 2px solid var(--foreground);
+  background: var(--background);
+  color: var(--foreground);
+  /* Offset shadow, like a page lifted off the wall. */
+  box-shadow: 8px 8px 0 -2px var(--background), 8px 8px 0 0 var(--foreground);
+}
+
+.rings {
+  position: absolute;
+  top: -10px;
+  left: 6%;
+  right: 6%;
+  display: flex;
+  justify-content: space-between;
+}
+
+.rings span {
+  width: 10px;
+  height: 20px;
+  border: 2px solid var(--foreground);
+  border-radius: 5px;
+  background: var(--background);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--foreground);
+}
+
+.month {
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 400;
+  font-size: clamp(18px, 4vw, 32px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.nav {
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--foreground);
+  background: transparent;
+  color: inherit;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.nav:hover {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.nav:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.weekday {
+  padding-bottom: 6px;
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(9px, 1.6vw, 12px);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.day,
+.blank {
+  min-height: clamp(36px, 8vw, 72px);
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.dayNumber {
+  font-family: var(--font-display), sans-serif;
+}
+
+/* Event days are inked in, like a marked-off date. */
+.eventDay {
+  border-color: var(--foreground);
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.dayEvent {
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+@media (max-width: 600px) {
+  .dayEvent {
+    display: none;
+  }
+}
+
+.listHeading {
+  margin: 28px 0 8px;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) 2fr 2fr;
+  gap: 4px 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.itemDate {
+  font-family: var(--font-display), sans-serif;
+  font-size: 12px;
+}
+
+.itemTitle {
+  font-weight: 600;
+}
+
+.itemPlace {
+  color: var(--muted);
+}
+
+@media (max-width: 600px) {
+  .item {
+    grid-template-columns: 1fr;
+  }
+}

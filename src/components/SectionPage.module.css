@@ -1,0 +1,12 @@
+.page {
+  min-height: 100svh;
+  padding: calc(var(--menu-height) + 48px) 24px 48px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 400;
+  font-size: clamp(24px, 5vw, 40px);
+  letter-spacing: 0.04em;
+}

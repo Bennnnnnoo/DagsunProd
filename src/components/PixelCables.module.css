@@ -1,0 +1,10 @@
+.cables {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  /* Fades with the speaker artwork they plug into, and on zooming into the staff (--grow and --zoom are set by Hero). */
+  opacity: calc((1 - var(--grow, 0)) * (1 - min(1, var(--zoom, 0) * 4)));
+  /* Canvas pixels are art pixels; scale them up without smoothing. */
+  image-rendering: pixelated;
+}

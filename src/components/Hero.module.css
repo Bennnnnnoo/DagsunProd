@@ -1,0 +1,256 @@
+.hero {
+  /* Portrait screens: the decks get their own band along the bottom and the
+     logo centres above it. decks.png is 2048x1040 (stretched 2x wider). */
+  --decks-width: clamp(300px, 86vw, 480px);
+  --decks-gap: 32px;
+  --decks-band: calc(var(--decks-width) * 1040 / 2048 + var(--decks-gap) + 16px);
+  position: relative;
+  height: 100svh;
+  display: grid;
+  place-items: center;
+  padding-top: var(--menu-height);
+  padding-bottom: var(--decks-band);
+  overflow: hidden;
+}
+
+/* DJ decks in the bottom-left corner; the dithered wire runs from their back edge. */
+/* Landscape screens: the decks fit in the bottom-left corner beside the logo. */
+@media (min-aspect-ratio: 4/3) {
+  .hero {
+    --decks-width: clamp(300px, 28vw, 540px);
+    --decks-band: 0px;
+  }
+}
+
+.decks {
+  position: absolute;
+  z-index: 2; /* over the logo when grown */
+  /* Fades out quickly as the stage zooms into the staff (--zoom is set by Hero). */
+  opacity: calc(1 - min(1, var(--zoom, 0) * 4));
+  bottom: var(--decks-gap);
+  left: 24px;
+  width: var(--decks-width);
+  transform-origin: 0 0;
+}
+
+.nowPlaying {
+  position: absolute;
+  z-index: 2;
+  top: var(--readout-top, auto);
+  left: 16px;
+  right: 16px;
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(10px, 1.6vw, 13px);
+  line-height: 1.8;
+  letter-spacing: 0.06em;
+  text-align: center;
+  visibility: hidden;
+}
+
+.nowPlayingShown {
+  visibility: visible;
+}
+
+.nowLabel {
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.decksArt {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1rem;
+  color: var(--foreground);
+  text-align: center;
+  pointer-events: none;
+}
+
+.logo {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Bar is 107.2% of the art's width, 2% left of it, and overlaps its empty top edge. */
+.wordmark {
+  /* Don't let the image's pixel width size the logo; the art does that. */
+  contain: inline-size;
+  width: 107.2%;
+  margin: 0 0 -1.5% -2%;
+  position: relative;
+  z-index: 3; /* stays above the decks as they grow; Hero moves it over them */
+  perspective: 900px;
+}
+
+.wordmark img {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* Stepped timing fakes a low frame rate: 48 frames over 6s is 8fps. */
+  animation: spin 6s steps(48) infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
+}
+
+/* The speaker and character fade out as the decks grow; the wordmark stays. */
+.artWrap {
+  --kick: 0;
+  position: relative;
+  opacity: calc(1 - var(--grow, 0));
+}
+
+.speakerArt {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(90vw, 560px);
+  /* Leave room above the decks band for the wordmark and padding (~160px). */
+  max-height: min(55svh, calc(100svh - var(--decks-band) - 160px));
+}
+
+/* Each cone pumps from its own centre (set inline), scaled by its strength:
+   an exaggerated, cartoony punch, a little wider than tall so it bulges. */
+.driverArt {
+  --pump: calc(var(--kick) * var(--strength));
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: scale(calc(1 + var(--pump) * 0.22), calc(1 + var(--pump) * 0.17));
+  /* Own layer, so pumping a cone doesn't repaint the rest of the artwork. */
+  will-change: transform;
+}
+
+/* Flat raster of the artwork, swapped in for the SVG layers while zooming into
+   the staff (Hero sets data-zooming): scaled up as crisp pixels. */
+.zoomArt {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  visibility: hidden;
+  image-rendering: pixelated;
+}
+
+.hero[data-zooming] .zoomArt {
+  visibility: visible;
+}
+
+.hero[data-zooming] .artWrap > :not(.zoomArt) {
+  visibility: hidden;
+}
+
+.characterArt {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.darkArt {
+  display: none;
+}
+
+/* Mirrors the theme rules in globals.css. */
+:global(:root[data-theme="dark"]) .lightArt {
+  display: none;
+}
+
+:global(:root[data-theme="dark"]) .darkArt {
+  display: block;
+}
+
+.speakerBack,
+.staffHole,
+.driverCentre {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .driverArt {
+    transform: none;
+  }
+
+  .wordmark img {
+    animation: none;
+  }
+}
+
+/* The calendar page, seen through the staff's hole: the window grows with the
+   zoom until it covers the screen, then the page is fully open. */
+.calendarLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow-y: auto;
+  padding: calc(var(--menu-height) + 32px) 16px 48px;
+  background: var(--background);
+  clip-path: ellipse(var(--hole-rx, 0px) var(--hole-ry, 0px) at var(--hole-x, 50%) var(--hole-y, 50%));
+  /* Shown as soon as the zoom starts, hidden on the other views. */
+  opacity: min(1, calc(var(--zoom, 0) * 1000));
+}
+
+.calendarLayer:not(.calendarOpen) {
+  pointer-events: none;
+}
+
+.calendarOpen {
+  clip-path: none;
+}
+
+/* Contacts block, top right: a black panel like the wordmark. Home view only. */
+.contacts {
+  position: absolute;
+  z-index: 4;
+  top: calc(var(--menu-height) + 16px);
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px;
+  background: #111;
+  color: #d9d9d9;
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(10px, 1.1vw, 13px);
+  font-style: normal;
+  letter-spacing: 0.06em;
+  opacity: calc((1 - var(--grow, 0)) * (1 - min(1, var(--zoom, 0) * 4)));
+}
+
+.contactsTitle {
+  color: #8a8a8a;
+  text-transform: uppercase;
+}
+
+.contacts a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.contacts a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.contacts a:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}

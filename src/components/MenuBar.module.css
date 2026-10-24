@@ -1,0 +1,63 @@
+/* Black bar like the wordmark, fixed over the top of every page. */
+.bar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 10;
+  height: var(--menu-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  background: #111;
+  color: #d9d9d9;
+  font-family: var(--font-display), sans-serif;
+}
+
+.links {
+  display: flex;
+  gap: clamp(6px, 3vw, 56px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: clamp(9px, 2.8vw, 14px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* HUD sprite beside each link (cut from sprite_sheet.jpg); hidden where the
+   menu needs every pixel for the words. */
+.icon {
+  width: auto;
+  height: 20px;
+}
+
+@media (max-width: 600px) {
+  .icon {
+    display: none;
+  }
+}
+
+.link:hover,
+.link[aria-current="page"] {
+  color: #fff;
+}
+
+.link[aria-current="page"] {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+}
+
+.link:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 4px;
+}

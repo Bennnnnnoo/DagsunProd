@@ -1,0 +1,88 @@
+/* Overlaid on the decks image; positions are percentages of the decks' box. */
+.player {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* The decks image is stretched 2x wide: the record box is an ellipse, and the
+   disc inside is a true circle (as tall as the box) stretched back out to fill it. */
+.record {
+  position: absolute;
+}
+
+.disc {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 100%;
+  aspect-ratio: 1;
+  transform: translateX(-50%) scaleX(2);
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px #131312;
+}
+
+.spinner {
+  width: 100%;
+  height: 100%;
+}
+
+/* 33 1/3 rpm, in 16 steps per turn to match the decks' low-fps feel. */
+.spinning {
+  animation: spin 1.8s steps(16) infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.coverPixels {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.spindle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6%;
+  height: 6%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: #131312;
+  box-shadow: 0 0 0 1px #9e9e9e;
+}
+
+.button {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 1px;
+}
+
+/* Full size: controls live. */
+.enabled .record,
+.enabled .button {
+  pointer-events: auto;
+}
+
+.enabled .record:first-child {
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinning {
+    animation: none;
+  }
+}

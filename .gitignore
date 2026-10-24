@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local test audio for the decks (scripts/load-local-tracks.py); never commit
+/public/local-tracks/

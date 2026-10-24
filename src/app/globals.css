@@ -1,10 +1,49 @@
-/* Base reset only. Design to come. */
+/* Base reset + light/dark palettes. Design to come.
+   Light by default; <html data-theme="dark"> switches to dark. */
+:root {
+  --menu-height: 48px;
+  color-scheme: light;
+  --background: #fff;
+  --foreground: #111;
+  --strong: #000;
+  --muted: #666;
+  --border: #e5e5e5;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #000;
+  --foreground: #e6e6e6;
+  --strong: #fff;
+  --muted: #8a8a8a;
+  --border: #1f1f1f;
+}
+
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
+html {
+  background: var(--background);
+}
+
 body {
   margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+a {
+  color: inherit;
+}
+
+a:hover {
+  color: var(--strong);
+}
+
+::selection {
+  background: var(--foreground);
+  color: var(--background);
 }
