@@ -1,69 +1,48 @@
-import Image from "next/image";
+import Link from "next/link";
+import ParticleField from "@/components/ParticleField";
+import { news, releases } from "@/lib/data";
+import { site } from "@/lib/site";
 import styles from "./page.module.css";
 
 export default function Home() {
+  const latestReleases = [...releases]
+    .sort((a, b) => b.releaseDate.localeCompare(a.releaseDate))
+    .slice(0, 3);
+  const latestNews = [...news].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.tsx</code> file.
-          </h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      <section className={styles.hero}>
+        <ParticleField />
+        <div className={styles.heroContent}>
+          <h1>{site.name}</h1>
+          <p>{site.description}</p>
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </section>
+
+      <section>
+        <h2>Latest releases</h2>
+        <ul>
+          {latestReleases.map((r) => (
+            <li key={r.slug}>
+              <Link href={`/releases/${r.slug}`}>
+                {r.catalogNumber} — {r.title}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section>
+        <h2>News</h2>
+        <ul>
+          {latestNews.map((n) => (
+            <li key={n.slug}>
+              <Link href={`/news/${n.slug}`}>{n.title}</Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </>
   );
 }
