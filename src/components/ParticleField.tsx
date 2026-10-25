@@ -40,6 +40,8 @@ type Props = {
   sourceStrengths?: readonly number[];
   /** Called every frame with the kick envelope (1 on the hit, decaying to 0) and the beat number. */
   onBeat?: (envelope: number, beat: number) => void;
+  /** Stop animating, e.g. while a page covers the whole field. */
+  paused?: boolean;
 };
 
 const CAMERA_Z = 5;
@@ -81,6 +83,7 @@ export default function ParticleField({
   onBeat,
   controls,
   glyphMask,
+  paused = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   // Kept in a ref so a new callback each render doesn't restart the scene.
@@ -88,6 +91,13 @@ export default function ParticleField({
   useEffect(() => {
     onBeatRef.current = onBeat;
   }, [onBeat]);
+  // Likewise for pausing: the scene's effect starts and stops its own loop.
+  const pausedRef = useRef(paused);
+  const syncLoopRef = useRef<() => void>(null);
+  useEffect(() => {
+    pausedRef.current = paused;
+    syncLoopRef.current?.();
+  }, [paused]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -134,6 +144,7 @@ export default function ParticleField({
     emptyMask.needsUpdate = true;
     let maskTexture: THREE.CanvasTexture | null = null;
     let maskVersion = -1;
+    let maskSize = "";
     let burstHead = 0;
 
     const uniforms = {
@@ -300,7 +311,10 @@ export default function ParticleField({
       // Glyph mask: (re)wrap the canvas as a texture and upload changes.
       const mask = glyphMask?.current;
       if (mask?.canvas) {
-        if (maskTexture?.image !== mask.canvas) {
+        // A new canvas, or the same one resized: texture storage has a fixed size.
+        const size = `${mask.canvas.width}x${mask.canvas.height}`;
+        if (!maskTexture || maskTexture.image !== mask.canvas || maskSize !== size) {
+          maskSize = size;
           maskTexture?.dispose();
           maskTexture = new THREE.CanvasTexture(mask.canvas);
           maskTexture.minFilter = THREE.LinearFilter;
@@ -357,11 +371,12 @@ export default function ParticleField({
       renderer.render(scene, camera);
     };
 
-    // Only animate while on screen.
+    // Only animate while on screen (and not paused).
     let visible = true;
     const syncLoop = () => {
-      renderer.setAnimationLoop(visible && !reducedMotion ? frame : null);
+      renderer.setAnimationLoop(visible && !pausedRef.current && !reducedMotion ? frame : null);
     };
+    syncLoopRef.current = syncLoop;
     const intersectionObserver = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting;
       syncLoop();
@@ -372,6 +387,7 @@ export default function ParticleField({
 
     return () => {
       renderer.setAnimationLoop(null);
+      syncLoopRef.current = null;
       intersectionObserver.disconnect();
       resizeObserver.disconnect();
       window.removeEventListener("pointermove", onPointerMove);

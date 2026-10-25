@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { site } from "@/lib/site";
 import styles from "./CableMenu.module.css";
-import { type Point, useMenu } from "./SiteMenu";
+import { type Point, rowSpots, useMenu } from "./SiteMenu";
 
 type Props = {
   /** The speaker/character artwork box (1024 x 1040 art coordinates). */
@@ -28,7 +28,7 @@ const ARC = { padX: 130, padY: 60, aboveWordmark: 34, margin: 16 }; // px
 // Below this stage width there's no room for the arc: the labels hang in a
 // row across the top instead (still on their cables).
 const ROW_BELOW = 700;
-const ROW_Y = 22; // px
+const ROW_Y = 24; // px, level with the bar on other pages
 const WORDMARK_GAP = 12; // px kept between labels and the wordmark
 const SAG = 0.35; // how far cables droop, relative to their length
 
@@ -92,14 +92,19 @@ export default function CableMenu({ art, wordmark, avoid = NONE }: Props) {
         .filter((el): el is HTMLElement => !!el && el.offsetWidth > 0)
         .map((el) => offsetWithin(el, stage));
       const place = (rx: number, ry: number) =>
-        site.nav.map((_, i) => {
-          if (row) return { x: (W * (i + 0.5)) / n, y: ROW_Y };
-          const angle = Math.PI - (i * Math.PI) / (n - 1); // left (180°) round the top to right (0°)
-          return {
-            x: Math.min(Math.max(cx + rx * Math.cos(angle), ARC.margin * 3), W - ARC.margin * 3),
-            y: Math.min(Math.max(cy - ry * Math.sin(angle), ARC.margin * 1.5), H - ARC.margin),
-          };
-        });
+        row
+          ? rowSpots(
+              sizes.map((s) => s.w),
+              W,
+              ROW_Y,
+            )
+          : site.nav.map((_, i) => {
+              const angle = Math.PI - (i * Math.PI) / (n - 1); // left (180°) round the top to right (0°)
+              return {
+                x: Math.min(Math.max(cx + rx * Math.cos(angle), ARC.margin * 3), W - ARC.margin * 3),
+                y: Math.min(Math.max(cy - ry * Math.sin(angle), ARC.margin * 1.5), H - ARC.margin),
+              };
+            });
       const clashes = (labels: Point[]) =>
         labels.some((p, i) => {
           const sz = sizes[i] ?? { w: 120, h: 32 };

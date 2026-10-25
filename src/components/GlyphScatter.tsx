@@ -91,17 +91,17 @@ const pick = <T,>(list: T[]) => list[Math.floor(Math.random() * list.length)];
  */
 export default function GlyphScatter({ decks, onMask, onSpriteChange, beats }: Props) {
   const spriteCanvasRef = useRef<HTMLCanvasElement>(null);
-  const panelCanvasRef = useRef<HTMLCanvasElement>(null);
-  const invertCanvasRef = useRef<HTMLCanvasElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const invertRef = useRef<HTMLDivElement>(null);
   const glowCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const spriteCanvas = spriteCanvasRef.current;
-    const panelCanvas = panelCanvasRef.current;
-    const invertCanvas = invertCanvasRef.current;
+    const panel = panelRef.current;
+    const invert = invertRef.current;
     const glowCanvas = glowCanvasRef.current;
     const host = spriteCanvas?.parentElement;
-    if (!spriteCanvas || !panelCanvas || !invertCanvas || !glowCanvas || !host) return;
+    if (!spriteCanvas || !panel || !invert || !glowCanvas || !host) return;
     const mask = document.createElement("canvas");
     const halo = document.createElement("canvas");
     const paths = PHYREXIAN_GLYPHS.map((d) => new Path2D(d));
@@ -205,21 +205,14 @@ export default function GlyphScatter({ decks, onMask, onSpriteChange, beats }: P
     const drawPanels = (w: number, h: number) => {
       const { rect, opening } = band(w, h);
       // The same rectangle twice: white (inverts the field) and blue (tints it).
-      for (const [target, colour] of [
-        [invertCanvas, "#fff"],
-        [panelCanvas, PANEL_COLOUR],
-      ] as const) {
-        target.width = w * PIXEL;
-        target.height = h * PIXEL;
-        const ctx = target.getContext("2d");
-        if (!ctx || !rect) continue;
-        ctx.fillStyle = colour;
-        ctx.fillRect(
-          Math.round(rect.l * PIXEL),
-          Math.round(rect.t * PIXEL),
-          Math.round((rect.r - rect.l) * PIXEL),
-          Math.round((rect.b - rect.t) * PIXEL),
-        );
+      // Plain boxes the band's size, so only the band is blended each frame.
+      for (const target of [invert, panel]) {
+        target.style.display = rect ? "" : "none";
+        if (!rect) continue;
+        target.style.left = `${Math.round(rect.l * PIXEL)}px`;
+        target.style.top = `${Math.round(rect.t * PIXEL)}px`;
+        target.style.width = `${Math.round((rect.r - rect.l) * PIXEL)}px`;
+        target.style.height = `${Math.round((rect.b - rect.t) * PIXEL)}px`;
       }
       drawGlow(w, h, opening);
     };
@@ -487,8 +480,13 @@ export default function GlyphScatter({ decks, onMask, onSpriteChange, beats }: P
 
   return (
     <>
-      <canvas ref={invertCanvasRef} className={`${styles.glyphs} ${styles.panelInvert}`} aria-hidden="true" />
-      <canvas ref={panelCanvasRef} className={`${styles.glyphs} ${styles.panels}`} aria-hidden="true" />
+      <div ref={invertRef} className={`${styles.glyphs} ${styles.panelInvert}`} aria-hidden="true" />
+      <div
+        ref={panelRef}
+        className={`${styles.glyphs} ${styles.panels}`}
+        style={{ background: PANEL_COLOUR }}
+        aria-hidden="true"
+      />
       <canvas ref={glowCanvasRef} className={styles.glyphs} aria-hidden="true" />
       <canvas ref={spriteCanvasRef} className={styles.glyphs} aria-hidden="true" />
     </>

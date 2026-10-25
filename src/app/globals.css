@@ -33,6 +33,8 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
+  /* Running text; headings and labels use the display face (--font-display). */
+  font-family: system-ui, sans-serif;
 }
 
 a {

@@ -26,7 +26,22 @@ export function useMenu() {
 }
 
 // The bar across the top of the other pages (its height is --menu-height).
-const BAR = { gap: 8, margin: 16 }; // px
+const BAR = { gap: 8, margin: 16, tightMargin: 6 }; // px
+
+/** Centres of labels of these widths in a centred row across a width W, closing
+ *  up the gaps (and margins) when they don't fit at full spacing. */
+export function rowSpots(widths: number[], W: number, y: number): Point[] {
+  const sum = widths.reduce((s, w) => s + w, 0);
+  const n = widths.length;
+  const roomy = sum + BAR.gap * (n - 1) <= W - 2 * BAR.margin;
+  const gap = roomy ? BAR.gap : Math.max(0, (W - 2 * BAR.tightMargin - sum) / Math.max(n - 1, 1));
+  let x = (W - (sum + gap * (n - 1))) / 2;
+  return widths.map((w) => {
+    const spot = { x: x + w / 2, y };
+    x += w + gap;
+    return spot;
+  });
+}
 
 /**
  * The site's menu, kept across pages. On home the labels hang round the art
@@ -42,7 +57,7 @@ export default function SiteMenu({ children }: { children: ReactNode }) {
   const [animate, setAnimate] = useState(false);
   const onHome = pathname === "/";
 
-  // Bar layout: the labels in a centred row, or spread evenly when they don't fit.
+  // Bar layout: the labels in a centred row.
   useEffect(() => {
     const nav = navRef.current;
     if (!nav) return;
@@ -50,19 +65,12 @@ export default function SiteMenu({ children }: { children: ReactNode }) {
     const measure = () => {
       const W = nav.clientWidth;
       const y = parseFloat(getComputedStyle(nav).getPropertyValue("--menu-height")) / 2 || 24;
-      const widths = labels.map((el) => el.offsetWidth);
-      const total = widths.reduce((sum, w) => sum + w, 0) + BAR.gap * (widths.length - 1);
-      if (total > W - 2 * BAR.margin) {
-        setBar(widths.map((_, i) => ({ x: (W * (i + 0.5)) / widths.length, y })));
-        return;
-      }
-      let x = (W - total) / 2;
       setBar(
-        widths.map((w) => {
-          const spot = { x: x + w / 2, y };
-          x += w + BAR.gap;
-          return spot;
-        }),
+        rowSpots(
+          labels.map((el) => el.offsetWidth),
+          W,
+          y,
+        ),
       );
     };
     measure();

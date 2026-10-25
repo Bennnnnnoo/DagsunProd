@@ -13,6 +13,7 @@
    "screen" turns the black ground blue and leaves white particles white. On the
    dark theme the particles are already white, so only the blue layer is used. */
 .panelInvert {
+  background: #fff;
   mix-blend-mode: difference;
 }
 

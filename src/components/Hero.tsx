@@ -1,12 +1,14 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Image from "next/image";
+import Link from "next/link";
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import character from "@/assets/art/character.svg";
-import characterDark from "@/assets/art/character-dark.svg";
+import character from "@/assets/art/character.png";
+import characterDark from "@/assets/art/character-dark.png";
 import { drivers } from "@/assets/art/drivers";
-import speakerDark from "@/assets/art/speaker-dark.svg";
-import speaker from "@/assets/art/speaker.svg";
+import speakerDark from "@/assets/art/speaker-dark.png";
+import speaker from "@/assets/art/speaker.png";
 import zoomArtDark from "@/assets/art/zoom-dark.png";
 import zoomArt from "@/assets/art/zoom.png";
 import decks from "@/assets/decks.png";
@@ -19,8 +21,12 @@ import DeckPlayer, { type NowPlaying } from "./DeckPlayer";
 import EventsCalendar from "./EventsCalendar";
 import PixelCables from "./PixelCables";
 import Faders from "./Faders";
-import ParticleField, { type FieldControls, type GlyphMask } from "./ParticleField";
+import type { FieldControls, GlyphMask } from "./ParticleField";
 import styles from "./Hero.module.css";
+
+// The field (three.js, the biggest script) loads after the page has painted:
+// the art and decks show straight away and the particles fade in behind them.
+const ParticleField = dynamic(() => import("./ParticleField"), { ssr: false });
 
 const FIELD_COLORS = {
   light: { color: "#111111", accent: "#2b4fc2", background: "#ffffff" },
@@ -64,6 +70,11 @@ const GROWN_MARGIN = 24; // px around the full-size decks
 const READOUT_SPACE = 56; // px kept free under them for the now-playing readout
 const WORDMARK_GAP = 12; // px between the wordmark and the full-size decks
 const CABLES_FPS = 20; // the cables redraw (a pixel loop) at most this often while moving
+
+// The artwork layers are 1024px rasters shown at most 560px wide (90vw on
+// phones); a higher quality than the default keeps their halftone crisp.
+const ART_SIZES = "(max-width: 622px) 90vw, 560px";
+const ART_QUALITY = 90;
 
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
@@ -234,6 +245,7 @@ export default function Hero() {
         onBeat={onBeat}
         controls={fieldControls}
         glyphMask={glyphMask}
+        paused={calendarOpen}
         {...FIELD_COLORS[theme]}
       />
       <GlyphScatter decks={decksRef} onMask={onGlyphMask} onSpriteChange={onSpriteChange} beats={beats} />
@@ -250,6 +262,12 @@ export default function Hero() {
       <CableMenu art={artRef} wordmark={wordmarkRef} />
       <div ref={decksRef} className={styles.decks}>
         <Image src={decks} alt="" className={styles.decksArt} loading="eager" />
+        {/* On home the decks open the Tracks page (the faders, on top, still slide). */}
+        {pathname === "/" && (
+          <Link href="/tracks" className={styles.decksLink}>
+            <span className={styles.decksHint}>Play tracks</span>
+          </Link>
+        )}
         <Faders initial={DEFAULT_FIELD_CONTROLS} onChange={onFader} />
         <DeckPlayer enabled={grown} onNowPlaying={setNowPlaying} />
       </div>
@@ -276,8 +294,21 @@ export default function Hero() {
                 pumps from its own centre), then the character on top. Cabinet
                 and character have light/dark versions; CSS hides one and lazy
                 loading means the hidden pair is never fetched. */}
-            <Image src={speaker} alt="" className={`${styles.speakerArt} ${styles.lightArt}`} loading="eager" />
-            <Image src={speakerDark} alt="" className={`${styles.speakerArt} ${styles.darkArt}`} />
+            <Image
+              src={speaker}
+              alt=""
+              sizes={ART_SIZES}
+              quality={ART_QUALITY}
+              className={`${styles.speakerArt} ${styles.lightArt}`}
+              loading="eager"
+            />
+            <Image
+              src={speakerDark}
+              alt=""
+              sizes={ART_SIZES}
+              quality={ART_QUALITY}
+              className={`${styles.speakerArt} ${styles.darkArt}`}
+            />
             {drivers.map((d, i) => {
               const origin = `${d.x * 100}% ${d.y * 100}%`;
               return (
@@ -285,6 +316,8 @@ export default function Hero() {
                   <Image
                     src={d.src}
                     alt=""
+                    sizes={ART_SIZES}
+                    quality={ART_QUALITY}
                     className={styles.driverArt}
                     loading="eager"
                     style={
@@ -324,8 +357,21 @@ export default function Hero() {
                 (hidden) so it's loaded before the first zoom. */}
             <Image src={zoomArt} alt="" unoptimized className={`${styles.zoomArt} ${styles.lightArt}`} />
             <Image src={zoomArtDark} alt="" unoptimized className={`${styles.zoomArt} ${styles.darkArt}`} />
-            <Image src={character} alt="" className={`${styles.characterArt} ${styles.lightArt}`} />
-            <Image src={characterDark} alt="" className={`${styles.characterArt} ${styles.darkArt}`} />
+            <Image
+              src={character}
+              alt=""
+              sizes={ART_SIZES}
+              quality={ART_QUALITY}
+              className={`${styles.characterArt} ${styles.lightArt}`}
+              loading="eager"
+            />
+            <Image
+              src={characterDark}
+              alt=""
+              sizes={ART_SIZES}
+              quality={ART_QUALITY}
+              className={`${styles.characterArt} ${styles.darkArt}`}
+            />
           </div>
         </div>
       </div>

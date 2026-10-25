@@ -38,6 +38,41 @@
   transform-origin: 0 0;
 }
 
+/* Covers the decks on home; hovering shows a tag like the menu's. */
+.decksLink {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.decksHint {
+  position: relative;
+  z-index: 1; /* over the record covers */
+  padding: 6px 12px;
+  background: #111;
+  color: #fff;
+  outline: 2px solid #0047ff;
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(10px, 1.2vw, 14px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  visibility: hidden;
+}
+
+.decksLink:hover .decksHint,
+.decksLink:focus-visible .decksHint {
+  visibility: visible;
+}
+
+.decksLink:focus-visible {
+  outline: 2px solid #0047ff;
+  outline-offset: 4px;
+}
+
 .nowPlaying {
   position: absolute;
   z-index: 2;
@@ -211,6 +246,8 @@
   clip-path: ellipse(var(--hole-rx, 0px) var(--hole-ry, 0px) at var(--hole-x, 50%) var(--hole-y, 50%));
   /* Shown as soon as the zoom starts, hidden on the other views. */
   opacity: min(1, calc(var(--zoom, 0) * 1000));
+  scrollbar-width: thin;
+  scrollbar-color: var(--foreground) transparent;
 }
 
 .calendarLayer:not(.calendarOpen) {

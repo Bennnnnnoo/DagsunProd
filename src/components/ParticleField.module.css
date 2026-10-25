@@ -9,4 +9,18 @@
   display: block;
   width: 100%;
   height: 100%;
+  /* The field loads after the page: step it in rather than popping. */
+  animation: field-in 480ms steps(6) both;
+}
+
+@keyframes field-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field canvas {
+    animation: none;
+  }
 }
