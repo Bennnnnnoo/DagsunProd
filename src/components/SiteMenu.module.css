@@ -1,0 +1,108 @@
+/* Over every page and the whole stage; only the labels take clicks. */
+.nav {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.nav ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Positions (centres) are set inline: on the arc round the art, or in the bar. */
+.nav li {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+/* Stepped timing, like the wordmark's spin and the decks' growth: the labels
+   hop between the arc and the bar at a low frame rate, one after another. */
+.nav[data-animate] li {
+  transition:
+    left 560ms steps(7),
+    top 560ms steps(7);
+}
+
+/* The bar behind the labels, dropping in once they're up top. */
+.strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--menu-height);
+  background: #0047ff;
+  transform: translateY(-100%);
+}
+
+.nav[data-animate] .strip {
+  transition: transform 320ms steps(4);
+}
+
+.nav[data-bar] .strip {
+  transform: none;
+  transition-delay: 240ms;
+}
+
+/* A black tag like the wordmark, with its sprite icon. */
+.label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #111;
+  color: #d9d9d9;
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(10px, 1.2vw, 14px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+.label:hover,
+.label[aria-current="page"] {
+  color: #fff;
+}
+
+.label[aria-current="page"] {
+  outline: 2px solid #0047ff;
+}
+
+/* On the blue bar the current page is picked out in white instead. */
+.nav[data-bar] .label[aria-current="page"] {
+  outline-color: #fff;
+}
+
+.label:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.icon {
+  width: auto;
+  height: 18px;
+}
+
+/* Narrow screens (labels in a row across the top): no icons, tighter tags. */
+@media (max-width: 699px) {
+  .label {
+    padding: 4px 6px;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+  }
+
+  .icon {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav[data-animate] li,
+  .nav[data-animate] .strip {
+    transition: none;
+  }
+}

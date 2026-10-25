@@ -270,6 +270,7 @@ export default function GlyphScatter({ decks, onMask, onSpriteChange, beats }: P
       const box = host.getBoundingClientRect();
       const w = Math.ceil(box.width / PIXEL);
       const h = Math.ceil(box.height / PIXEL);
+      if (w === 0 || h === 0) return; // not laid out (yet, or any more)
       if (mask.width !== w || mask.height !== h || glyphs.length === 0) {
         mask.width = w;
         mask.height = h;

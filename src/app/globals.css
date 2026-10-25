@@ -1,7 +1,7 @@
 /* Base reset + light/dark palettes. Design to come.
    Light by default; <html data-theme="dark"> switches to dark. */
 :root {
-  --menu-height: 0px; /* no menu bar: the menu hangs off the speaker (CableMenu) */
+  --menu-height: 48px; /* the menu bar off home (on home the menu hangs off the speaker) */
   color-scheme: light;
   --background: #fff;
   --foreground: #111;

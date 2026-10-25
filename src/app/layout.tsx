@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import SiteMenu from "@/components/SiteMenu";
 import { display } from "@/lib/fonts";
 import { site } from "@/lib/site";
 import { themeInitScript } from "@/lib/themeScript";
@@ -16,7 +17,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
-        <main>{children}</main>
+        <SiteMenu>
+          <main>{children}</main>
+        </SiteMenu>
       </body>
     </html>
   );

@@ -1,12 +1,10 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type RefObject, useEffect, useRef, useState } from "react";
-import { sprites } from "@/assets/sprites";
 import { site } from "@/lib/site";
 import styles from "./CableMenu.module.css";
+import { type Point, useMenu } from "./SiteMenu";
 
 type Props = {
   /** The speaker/character artwork box (1024 x 1040 art coordinates). */
@@ -16,8 +14,6 @@ type Props = {
   /** Other things the labels must keep clear of (e.g. the contacts box). */
   avoid?: RefObject<HTMLElement | null>[];
 };
-
-type Point = { x: number; y: number };
 
 // Where each item's cable plugs into the speaker cabinet, in art coordinates,
 // in menu order (left to right round the arc): left side, top, back corner.
@@ -61,18 +57,19 @@ const NONE: RefObject<HTMLElement | null>[] = [];
 type Layout = { labels: Point[]; plugs: Point[]; width: number; height: number };
 
 /**
- * The site's menu: labels on an invisible semicircle round the main art, each
- * hanging off a pixel cable plugged into the speaker.
+ * The home stage's half of the menu: places the labels (rendered by SiteMenu)
+ * on an invisible semicircle round the main art, each hanging off a pixel
+ * cable plugged into the speaker.
  */
 export default function CableMenu({ art, wordmark, avoid = NONE }: Props) {
   const pathname = usePathname();
-  const navRef = useRef<HTMLElement>(null);
+  const { nav, setArc } = useMenu();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [layout, setLayout] = useState<Layout | null>(null);
 
   // Arc and plug positions, in px within the stage.
   useEffect(() => {
-    const stage = navRef.current?.parentElement;
+    const stage = canvasRef.current?.parentElement;
     if (!stage) return;
     const measure = () => {
       const artEl = art.current;
@@ -87,7 +84,7 @@ export default function CableMenu({ art, wordmark, avoid = NONE }: Props) {
       const n = site.nav.length;
       const row = W < ROW_BELOW;
       // Label sizes (rendered, possibly hidden), to keep them off the wordmark.
-      const sizes = [...(navRef.current?.querySelectorAll("a") ?? [])].map((el) => ({
+      const sizes = [...(nav.current?.querySelectorAll("a") ?? [])].map((el) => ({
         w: el.offsetWidth,
         h: el.offsetHeight,
       }));
@@ -138,13 +135,19 @@ export default function CableMenu({ art, wordmark, avoid = NONE }: Props) {
       }
       const plugs = PLUGS.map((p) => ({ x: a.x + (p.x / 1024) * a.w, y: a.y + (p.y / 1040) * a.h }));
       setLayout({ labels, plugs, width: W, height: H });
+      // The labels live in a fixed layer over the page: hand them viewport px.
+      const box = stage.getBoundingClientRect();
+      setArc(labels.map((p) => ({ x: box.left + p.x, y: box.top + p.y })));
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(stage);
     if (art.current) observer.observe(art.current);
-    return () => observer.disconnect();
-  }, [art, wordmark, avoid]);
+    return () => {
+      observer.disconnect();
+      setArc(null);
+    };
+  }, [art, wordmark, avoid, nav, setArc]);
 
   // Cables: drawn soft, then snapped to hard pixels in three layers (outline,
   // body, highlight) with a checker shadow, like the decks' cables.
@@ -207,28 +210,12 @@ export default function CableMenu({ art, wordmark, avoid = NONE }: Props) {
     ctx.putImageData(out, 0, 0);
   }, [layout]);
 
+  // Off home the labels leave for the bar, so their cables go straight away.
   return (
-    <>
-      <canvas ref={canvasRef} className={styles.cables} aria-hidden="true" />
-      <nav ref={navRef} aria-label="Main" className={styles.nav}>
-        <ul>
-          {site.nav.map((item, i) => (
-            <li
-              key={item.href}
-              style={layout ? { left: layout.labels[i].x, top: layout.labels[i].y } : { visibility: "hidden" }}
-            >
-              <Link
-                href={item.href}
-                className={styles.label}
-                aria-current={pathname === item.href ? "page" : undefined}
-              >
-                <Image src={sprites[item.icon]} alt="" className={styles.icon} unoptimized />
-                {item.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-    </>
+    <canvas
+      ref={canvasRef}
+      className={`${styles.cables} ${pathname === "/" ? "" : styles.unplugged}`}
+      aria-hidden="true"
+    />
   );
 }
