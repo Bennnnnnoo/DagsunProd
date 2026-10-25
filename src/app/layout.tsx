@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import MenuBar from "@/components/MenuBar";
 import { display } from "@/lib/fonts";
 import { site } from "@/lib/site";
 import { themeInitScript } from "@/lib/themeScript";
@@ -17,7 +16,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
-        <MenuBar />
         <main>{children}</main>
       </body>
     </html>

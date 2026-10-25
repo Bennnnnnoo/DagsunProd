@@ -12,9 +12,9 @@ import zoomArt from "@/assets/art/zoom.png";
 import decks from "@/assets/decks.png";
 import wordmark from "@/assets/wordmark.png";
 import { usePathname } from "next/navigation";
-import { site } from "@/lib/site";
 import { useTheme } from "@/lib/theme";
 import GlyphScatter from "./GlyphScatter";
+import CableMenu from "./CableMenu";
 import DeckPlayer, { type NowPlaying } from "./DeckPlayer";
 import EventsCalendar from "./EventsCalendar";
 import PixelCables from "./PixelCables";
@@ -86,9 +86,6 @@ export default function Hero() {
   const goTo = useRef<(target: View) => void>(null);
   const wordmarkRef = useRef<HTMLHeadingElement>(null);
   const holeRef = useRef<HTMLSpanElement>(null);
-  const contactsRef = useRef<HTMLElement>(null);
-  const glyphsAvoid = useMemo(() => [wordmarkRef, decksRef, contactsRef], []);
-  const glyphsAvoidIfRoom = useMemo(() => [artRef], []);
   // Glyphs: GlyphScatter paints their mask, the particle field draws them.
   const glyphMask = useRef<GlyphMask>({ canvas: null, version: 0, strength: 1, bursts: [] });
   const onGlyphMask = useCallback((canvas: HTMLCanvasElement) => {
@@ -239,13 +236,7 @@ export default function Hero() {
         glyphMask={glyphMask}
         {...FIELD_COLORS[theme]}
       />
-      <GlyphScatter
-        avoid={glyphsAvoid}
-        avoidIfRoom={glyphsAvoidIfRoom}
-        onMask={onGlyphMask}
-        onSpriteChange={onSpriteChange}
-        beats={beats}
-      />
+      <GlyphScatter decks={decksRef} onMask={onGlyphMask} onSpriteChange={onSpriteChange} beats={beats} />
       {/* The decks' two cables continue into the back of the speaker stack, behind the artwork. */}
       <PixelCables
         from={cablesFrom}
@@ -255,6 +246,8 @@ export default function Hero() {
         layoutKey={decksLayout}
         beats={beats}
       />
+      {/* The menu: labels round the art, each on a cable into the speaker. */}
+      <CableMenu art={artRef} wordmark={wordmarkRef} />
       <div ref={decksRef} className={styles.decks}>
         <Image src={decks} alt="" className={styles.decksArt} loading="eager" />
         <Faders initial={DEFAULT_FIELD_CONTROLS} onChange={onFader} />
@@ -340,14 +333,6 @@ export default function Hero() {
       <div className={`${styles.calendarLayer} ${calendarOpen ? styles.calendarOpen : ""}`} inert={!calendarOpen}>
         <EventsCalendar />
       </div>
-      {/* Contacts, top right of the home view. */}
-      <address ref={contactsRef} className={styles.contacts} inert={pathname !== "/"}>
-        <span className={styles.contactsTitle}>Contact</span>
-        <a href={`mailto:${site.contact.email}`}>{site.contact.email}</a>
-        <a href={`https://www.instagram.com/${site.contact.instagram}/`} target="_blank" rel="noopener noreferrer">
-          IG @{site.contact.instagram}
-        </a>
-      </address>
     </section>
   );
 }

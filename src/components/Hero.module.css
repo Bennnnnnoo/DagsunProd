@@ -1,24 +1,28 @@
 .hero {
-  /* Portrait screens: the decks get their own band along the bottom and the
-     logo centres above it. decks.png is 2048x1040 (stretched 2x wider). */
+  /* The decks get their own band along the bottom and the logo centres
+     above it. decks.png is 2048x1040 (stretched 2x wider). */
   --decks-width: clamp(300px, 86vw, 480px);
   --decks-gap: 32px;
+  --menu-space: 56px;
   --decks-band: calc(var(--decks-width) * 1040 / 2048 + var(--decks-gap) + 16px);
   position: relative;
   height: 100svh;
   display: grid;
   place-items: center;
-  padding-top: var(--menu-height);
+  /* Room above the wordmark for the top of the menu's arc (CableMenu). */
+  padding-top: var(--menu-space);
   padding-bottom: var(--decks-band);
   overflow: hidden;
 }
 
-/* DJ decks in the bottom-left corner; the dithered wire runs from their back edge. */
+/* DJ decks centred along the bottom; the cables run from their back edge. */
 /* Landscape screens: the decks fit in the bottom-left corner beside the logo. */
+/* Landscape screens: the decks are smaller, and the band along the bottom
+   (blue, with the figures and glyphs beside the decks) is kept clear of the
+   main art too. */
 @media (min-aspect-ratio: 4/3) {
   .hero {
     --decks-width: clamp(300px, 28vw, 540px);
-    --decks-band: 0px;
   }
 }
 
@@ -28,7 +32,8 @@
   /* Fades out quickly as the stage zooms into the staff (--zoom is set by Hero). */
   opacity: calc(1 - min(1, var(--zoom, 0) * 4));
   bottom: var(--decks-gap);
-  left: 24px;
+  /* Centred along the bottom; the figures and glyphs sit either side of it. */
+  left: calc(50% - var(--decks-width) / 2);
   width: var(--decks-width);
   transform-origin: 0 0;
 }
@@ -216,41 +221,12 @@
   clip-path: none;
 }
 
-/* Contacts block, top right: a black panel like the wordmark. Home view only. */
-.contacts {
-  position: absolute;
-  z-index: 4;
-  top: calc(var(--menu-height) + 16px);
-  right: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px 16px;
-  background: #111;
-  color: #d9d9d9;
-  font-family: var(--font-display), sans-serif;
-  font-size: clamp(10px, 1.1vw, 13px);
-  font-style: normal;
-  letter-spacing: 0.06em;
-  opacity: calc((1 - var(--grow, 0)) * (1 - min(1, var(--zoom, 0) * 4)));
-}
 
-.contactsTitle {
-  color: #8a8a8a;
-  text-transform: uppercase;
-}
+/* Narrow screens: the menu hangs in a row across the top, so there's a bit
+   more room above the wordmark. */
+@media (max-width: 699px) {
+  .hero {
+    --menu-space: 92px;
+  }
 
-.contacts a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.contacts a:hover {
-  color: #fff;
-  text-decoration: underline;
-}
-
-.contacts a:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
 }
